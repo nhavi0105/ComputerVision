@@ -1,127 +1,80 @@
-# process.py
 import time
-import cv2
-import numpy as np
-import os
+from Week1_Capturering.Week1_captureSaveImg import CaptureSaveImgProcessor
+
+from Week2_Filtering.Week2_Ex1_Grayscale import GrayscaleProcessor
+from Week2_Filtering.Week2_Ex2_Gaussian import GaussianProcessor
+from Week2_Filtering.Week2_Ex3_Median import MedianProcessor
+from Week2_Filtering.Week2_Ex4_SobelX import SobelXProcessor
+from Week2_Filtering.Week2_Ex5_Laplacian import LaplacianProcessor
+from Week2_Filtering.Week2_Ex6_Sharpen import SharpenProcessor
+from Week2_Filtering.Week2_Ex7_Bilateral import BilateralProcessor
+from Week2_Filtering.Week2_Ex8_Threshold import ThresholdProcessor
+from Week2_Filtering.Week2_Ex9_Erosion import ErosionProcessor
+from Week2_Filtering.Week2_Ex10_Dilation import DilationProcessor
+
+
+# CHANGE THIS for each experiment:
+# 'grayscale', 'gaussian', 'median', 'sobelx', 'laplacian', 'sharpen',
+# 'bilateral', 'threshold', 'erosion', 'dilation'
+FILTER_MODE = "median"
 
 
 class ImageProcessor:
-    """
-    Minimal, working ImageProcessor for the Flask camera app.
-
-    - Designed to be imported like: from process import ImageProcessor
-    - Designed to be used like:
-        processor = ImageProcessor()
-        processed_img, results, process_time_ms = processor.process_frame(bgr_img)
-
-    This version keeps things simple & stable:
-    - (optional) save snapshot to CapturedImage/
-    - grayscale
-    - gaussian blur
-    - (optional) canny edge
-    """
-
     def __init__(self):
-        # Placeholder fields for future steps (calibration, homography, tracking, etc.)
-        self.camera_matrix = None
-        self.dist_coeffs = None
-        self.homography_matrix = None
+        pass
 
-        self.previous_frame = None
-        self.tracked_objects = []
-
-        # Toggle features
-        self.enable_save_snapshot = False   # set True if you want to save frames
-        self.enable_edges = False           # set True if you want edge output
-
-    # -------------------------
-    # Step 1: Save image
-    # -------------------------
-    def capture_and_save_image(self, bgr_img, filename):
-        """
-        Save an image to CapturedImage/ folder.
-
-        Returns:
-            bool: True if saved successfully, False otherwise
-        """
-        try:
-            if bgr_img is None or not isinstance(bgr_img, np.ndarray):
-                return False
-
-            save_dir = "CapturedImage"
-            os.makedirs(save_dir, exist_ok=True)
-
-            save_path = os.path.join(save_dir, filename)
-            return bool(cv2.imwrite(save_path, bgr_img))
-        except Exception as e:
-            print("Error saving image:", e)
-            return False
-
-    # -------------------------
-    # Step 1.5: Basic helpers
-    # -------------------------
-    def convert_to_grayscale(self, bgr_img):
-        """Convert BGR image to grayscale."""
-        if bgr_img is None:
-            return None
-        return cv2.cvtColor(bgr_img, cv2.COLOR_BGR2GRAY)
-
-    def apply_gaussian_filter(self, img, kernel_size=(5, 5), sigma=1.0):
-        """Apply Gaussian blur."""
-        if img is None:
-            return None
-        return cv2.GaussianBlur(img, kernel_size, sigma)
-
-    def detect_edges_canny(self, img, threshold1=50, threshold2=150):
-        """Canny edge detector (expects grayscale)."""
-        if img is None:
-            return None
-        return cv2.Canny(img, threshold1, threshold2)
-
-    # -------------------------
-    # Main pipeline
-    # -------------------------
     def process_frame(self, bgr_img):
-        """
-        Process a single frame.
-
-        Returns:
-            processed_img: np.ndarray (grayscale/edge image)
-            results: dict
-            process_time_ms: float
-        """
         if bgr_img is None:
             raise ValueError("Input frame is None")
 
         start_time = time.perf_counter()
         results = {}
 
-        # Optional snapshot saving (off by default)
-        if self.enable_save_snapshot:
-            ok = self.capture_and_save_image(bgr_img, "test_capture.jpg")
-            results["saved_snapshot"] = ok
+        saver = CaptureSaveImgProcessor()
+        saver.capture_and_save_image(bgr_img, "test_capture.bmp")
 
-        # Grayscale
-        gray = self.convert_to_grayscale(bgr_img)
-        if gray is None:
-            raise ValueError("Grayscale conversion failed")
+        processed = None
 
-        # Gaussian blur
-        blurred = self.apply_gaussian_filter(gray, kernel_size=(5, 5), sigma=1.0)
-        if blurred is None:
-            raise ValueError("Gaussian filter failed")
+        if FILTER_MODE == "grayscale":
+            processed = GrayscaleProcessor().convert_to_grayscale(bgr_img)
 
-        # Optional edges
-        if self.enable_edges:
-            edges = self.detect_edges_canny(blurred, threshold1=50, threshold2=150)
-            processed_img = edges
-            results["mode"] = "edges"
+        elif FILTER_MODE == "gaussian":
+            processed = GaussianProcessor().apply_gaussian_filter(bgr_img, kernel_size=(5, 5), sigma=1.0)
+
+        elif FILTER_MODE == "median":
+            processed = MedianProcessor().apply_median_blur(bgr_img, ksize=5)
+
+        elif FILTER_MODE == "sobelx":
+            processed = SobelXProcessor().sobel_x(bgr_img, ksize=3)
+
+        elif FILTER_MODE == "laplacian":
+            processed = LaplacianProcessor().laplacian(bgr_img, ksize=3)
+
+        elif FILTER_MODE == "sharpen":
+            processed = SharpenProcessor().sharpen(bgr_img)
+
+        elif FILTER_MODE == "bilateral":
+            processed = BilateralProcessor().bilateral(bgr_img, d=9, sigmaColor=75, sigmaSpace=75)
+
+        elif FILTER_MODE == "threshold":
+            processed = ThresholdProcessor().binary_threshold(bgr_img, thresh=127)
+
+        elif FILTER_MODE == "erosion":
+            processed = ErosionProcessor().erode(bgr_img, ksize=3, iterations=1)
+
+        elif FILTER_MODE == "dilation":
+            processed = DilationProcessor().dilate(bgr_img, ksize=3, iterations=1)
+
         else:
-            processed_img = blurred
-            results["mode"] = "blurred_gray"
+            processed = bgr_img  # fallback
 
-        process_time_ms = (time.perf_counter() - start_time) * 1000.0
-        results["process_time_ms"] = round(process_time_ms, 2)
+        # safety: never return None
+        if processed is None:
+            processed = bgr_img
 
-        return processed_img, results, process_time_ms
+        saver.capture_and_save_image(processed, "processed_capture.bmp")
 
+        process_time_ms = (time.perf_counter() - start_time) * 1000
+        results["filter"] = FILTER_MODE
+
+        return processed, results, process_time_ms
