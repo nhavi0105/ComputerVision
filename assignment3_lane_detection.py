@@ -53,7 +53,7 @@ def draw_lines(img, lines):
             right_lines.append((slope, intercept))
 
     if len(left_lines) == 0 and len(right_lines) == 0:
-        print("⚠️ No lane detected after filtering")
+        print("No lane detected after filtering")
         return img
 
     def average_line(lines):
@@ -99,7 +99,7 @@ def draw_lines(img, lines):
     right_avg = average_line(right_lines)
 
     if left_avg is None and right_avg is None:
-        print("⚠️ No lane detected after filtering")
+        print("No lane detected after filtering")
         return img
 
     line_img = np.zeros_like(img)
