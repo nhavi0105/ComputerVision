@@ -44,7 +44,6 @@ def draw_lines(img, lines):
         slope = (y2 - y1) / (x2 - x1)
         intercept = y1 - slope * x1
 
-        # 🔥 NỚI LỎNG lại (QUAN TRỌNG)
         if abs(slope) < 0.4:
             continue
 
@@ -53,7 +52,6 @@ def draw_lines(img, lines):
         else:
             right_lines.append((slope, intercept))
 
-    # fallback nếu bị mất 1 bên
     if len(left_lines) == 0 and len(right_lines) == 0:
         print("⚠️ No lane detected after filtering")
         return img
@@ -90,7 +88,6 @@ def draw_lines(img, lines):
 
     return cv2.addWeighted(img, 0.8, line_img, 1, 1)
 
-    # tính trung bình
     def average_line(lines):
         if len(lines) == 0:
             return None
@@ -117,12 +114,10 @@ def draw_lines(img, lines):
         x2 = int((y2 - intercept) / slope)
         return (x1, y1, x2, y2)
 
-    # vẽ left
     if left_avg is not None:
         x1, y1_, x2, y2_ = make_points(left_avg)
         cv2.line(line_img, (x1, y1_), (x2, y2_), (0, 255, 0), 6)
 
-    # vẽ right
     if right_avg is not None:
         x1, y1_, x2, y2_ = make_points(right_avg)
         cv2.line(line_img, (x1, y1_), (x2, y2_), (0, 255, 0), 6)
@@ -132,11 +127,9 @@ def draw_lines(img, lines):
 def color_filter(img):
     hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
 
-    # white (nới lỏng)
     lower_white = np.array([0, 0, 180])
     upper_white = np.array([180, 40, 255])
 
-    # yellow (giữ)
     lower_yellow = np.array([10, 70, 70])
     upper_yellow = np.array([40, 255, 255])
 
@@ -155,27 +148,24 @@ def process_image(path, output_name):
         print("Cannot load image")
         return
 
-    # 1. lọc màu lane
     mask = color_filter(img)
     
-    # 2. blur
     blur = cv2.GaussianBlur(mask, (5, 5), 0)
     
-    # 🔥 thêm đoạn này
     kernel = np.ones((3,3), np.uint8)
     blur = cv2.dilate(blur, kernel, iterations=1)
     
-    # 3. canny
+    # canny
     median = np.median(blur)
     lower = int(max(0, 0.66 * median))
     upper = int(min(255, 1.33 * median))
     
     edges = cv2.Canny(blur, lower, upper)
 
-    # 4. ROI
+    # ROI
     roi = region_of_interest(edges)
 
-    # 5. Hough Transform (tuned)
+    # Hough Transform 
     lines = cv2.HoughLinesP(
         roi,
         rho=1,
@@ -185,10 +175,10 @@ def process_image(path, output_name):
         maxLineGap=100,
     )
 
-    # 6. Draw filtered lines
+    # Draw filtered lines
     result = draw_lines(img, lines)
 
-    # 7. Save output
+    # Save output
     output_path = os.path.join(OUTPUT_FOLDER, output_name)
     success = cv2.imwrite(output_path, result)
 
@@ -204,7 +194,6 @@ def main():
         print(f"Folder not found: {INPUT_FOLDER}")
         return
 
-    # lọc file ảnh (fix .DS_Store)
     images = sorted([
         f for f in os.listdir(INPUT_FOLDER)
         if f.lower().endswith((".jpg", ".jpeg", ".png"))
